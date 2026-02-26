@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="my" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BBOTLOGIC PRO SYSTEM</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700;900&family=Noto+Sans+Myanmar:wght@400;600;700;800&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#09090b', cardBg: '#18181b', lightBg: '#f8fafc', lightCard: '#ffffff',
+                        neonGreen: '#10b981', neonBlue: '#0ea5e9', neonOrange: '#f97316',
+                        neonPurple: '#8b5cf6', neonRed: '#ef4444', neonYellow: '#eab308'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100dvh; overflow: hidden; font-family: 'Outfit', 'Noto Sans Myanmar', sans-serif; }
+        
+        /* Smooth Animations */
+        .slide-up { animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        .glow-text { text-shadow: 0 0 15px currentColor; }
+        
+        input, select, textarea { outline: none; transition: all 0.3s; color: inherit; }
+        
+        /* Hide Number Spinners for Cleaner Look */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Pro App Background Pattern */
+        .bg-pattern {
+            background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .dark .bg-pattern {
+            background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-lightBg dark:bg-darkBg text-slate-900 dark:text-zinc-100 transition-colors duration-500">
+    <div id="root" class="h-full relative z-10"></div>
+    <!-- Fixed Background Pattern -->
+    <div class="fixed inset-0 z-0 bg-pattern pointer-events-none"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Logic ကို လုံးဝ မပြောင်းပါ ---
+        function useLocalStorage(key, initialValue) {
+            const[storedValue, setStoredValue] = useState(() => {
+                try {
+                    const item = window.localStorage.getItem(key);
+                    return item ? JSON.parse(item) : initialValue;
+                } catch (error) { return initialValue; }
+            });
+            const setValue = (value) => {
+                try {
+                    setStoredValue(prev => {
+                        const valueToStore = value instanceof Function ? value(prev) : value;
+                        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+                        return valueToStore;
+                    });
+                } catch (error) { console.error(error); }
+            };
+            return[storedValue, setValue];
+        }
+
+        const dictionary = {
+            mn: {
+                evTab: "EV ကိရိယာများ", homeTab: "အိမ်သုံးလျှပ်စစ်",
+                battTitle: "🔋 ဘက်ထရီ တည်ဆောက်မှု", chargeTitle: "🔌 အားသွင်းချိန်", motorTitle: "🏍️ မော်တာ & မြန်နှုန်း", ctrlTitle: "🎛️ ကွန်ထရိုလာ & ဝါယာကြိုး", rangeTitle: "📏 ခရီးအကွာအဝေး", typeTitle: "🧪 ဘက်ထရီ အမျိုးအစား (Specs)",
+                loadTitle: "⚡ အိမ်သုံးမီတာ Load တွက်ရန်", itemName: "ပစ္စည်းအမည်", qty: "အရေအတွက်", watts: "ဝပ် (W)", addRow: "+ အသစ်ထည့်မည်", totalLoad: "စုစုပေါင်း Load",
+                wvaTitle: "⚡ V, A, W ရှာဖွေရန်", pumpTitle: "💧 မော်တာ/ရေစုပ်စက်", billTitle: "💰 မီတာခ တွက်ချက်ရန်",
+                settings: "ဆက်တင်များ", theme: "အလင်း / အမှောင်", font: "ဖောင့်ဒီဇိုင်း", sound: "အသံ (UI Sounds)", anim: "လှုပ်ရှားမှု (Animations)", uiSize: "အရွယ်အစား (UI Size)", haptic: "တုန်ခါမှု (Vibration)", about: "App အကြောင်း", aboutDesc: "BBOTLOGIC System သည် EV နှင့် အိမ်သုံးလျှပ်စစ် ပြင်ဆင်သူများအတွက် အထူးပြုလုပ်ထားသော AI App ဖြစ်ပါသည်။", close: "ပိတ်မည်",
+                saveBtn: "Save လုပ်မည်", resetBtn: "Data Reset လုပ်မည်", edit: "ပြင်မည်", delete: "ဖျက်မည်", clearBtn: "Data ရှင်းလင်းမည်"
+            },
+            en: {
+                evTab: "EV Tools", homeTab: "Home Elec",
+                battTitle: "🔋 Battery Pack", chargeTitle: "🔌 Charge Time", motorTitle: "🏍️ Motor & Speed", ctrlTitle: "🎛️ Controller & Wire", rangeTitle: "📏 Range Estimator", typeTitle: "🧪 Battery Type Specs",
+                loadTitle: "⚡ House Power Load", itemName: "Item Name", qty: "Qty", watts: "Watts (W)", addRow: "+ Add Row", totalLoad: "Total Load",
+                wvaTitle: "⚡ Basic W, V, A", pumpTitle: "💧 AC Motor & Pump", billTitle: "💰 Electricity Bill",
+                settings: "Settings", theme: "Theme Mode", font: "Font Design", sound: "UI Sounds", anim: "Animations", uiSize: "App UI Size", haptic: "Vibration", about: "About App", aboutDesc: "BBOTLOGIC System is a Pro AI assistant app for EV & Home Electric modifiers.", close: "Close",
+                saveBtn: "Save Settings", resetBtn: "Reset Data", edit: "Edit", delete: "Delete", clearBtn: "Clear Data"
+            }
+        };
+
+        function App() {
+            const[activeTab, setActiveTab] = useState('ev'); 
+            const[isSettingsOpen, setIsSettingsOpen] = useState(false);
+            
+            const[lang, setLang] = useLocalStorage('bbot_lang', 'mn'); 
+            const[themeMode, setThemeMode] = useLocalStorage('bbot_theme', 'dark');
+            const[fontStyle, setFontStyle] = useLocalStorage('bbot_font', 'Outfit');
+            const[uiScale, setUiScale] = useLocalStorage('bbot_ui', 'md');
+            const[soundEnabled, setSoundEnabled] = useLocalStorage('bbot_sound', true);
+            const[animEnabled, setAnimEnabled] = useLocalStorage('bbot_anim', true);
+            const[hapticEnabled, setHapticEnabled] = useLocalStorage('bbot_haptic', true);
+
+            const t = dictionary[lang]; 
+
+            useEffect(() => {
+                if(themeMode === 'light') { document.documentElement.classList.add('light'); document.documentElement.classList.remove('dark'); }
+                else { document.documentElement.classList.remove('light'); document.documentElement.classList.add('dark'); }
+            }, [themeMode]);
+
+            useEffect(() => { document.body.style.fontFamily = `"${fontStyle}", "Noto Sans Myanmar", sans-serif`; }, [fontStyle]);
+
+            useEffect(() => {
+                const root = document.documentElement;
+                if (uiScale === 'sm') root.style.fontSize = '14px';
+                else if (uiScale === 'lg') root.style.fontSize = '18px';
+                else root.style.fontSize = '16px';
+            },[uiScale]);
+
+            const triggerFeedback = () => {
+                if(soundEnabled) {
+                    try {
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sine'; osc.frequency.setValueAtTime(600, ctx.currentTime);
+                        gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+                        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.1);
+                    } catch(e) {}
+                }
+                if(hapticEnabled && window.navigator && window.navigator.vibrate) { window.navigator.vibrate(50); }
+            };
+
+            const handleTabSwitch = (id) => { triggerFeedback(); setActiveTab(id); };
+            const toggleSettings = () => { triggerFeedback(); setIsSettingsOpen(!isSettingsOpen); };
+
+            return (
+                <div className="flex flex-col h-full">
+                    
+                    {/* UI UX Upgrade: Sleek Sticky Header with Glassmorphism */}
+                    <header className="sticky top-0 z-40 px-5 py-4 bg-white/70 dark:bg-darkBg/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 flex justify-between items-center transition-colors">
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neonBlue via-slate-600 dark:via-zinc-300 to-neonPurple tracking-tight drop-shadow-sm">
+                                BBOTLOGIC
+                            </h1>
+                            <p className="text-slate-500 dark:text-zinc-400 text-[9px] md:text-[10px] mt-0.5 uppercase tracking-[0.2em] font-bold">Pro System</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                            <div className="flex bg-slate-200/50 dark:bg-zinc-800/50 rounded-full border border-slate-200 dark:border-zinc-700/50 p-1 cursor-pointer select-none backdrop-blur-md">
+                                <div onClick={() => { setLang('en'); triggerFeedback(); }} className={`px-3 py-1 text-[10px] font-black tracking-wider rounded-full transition-all duration-300 ${lang === 'en' ? 'bg-white dark:bg-zinc-200 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-zinc-300'}`}>EN</div>
+                                <div onClick={() => { setLang('mn'); triggerFeedback(); }} className={`px-3 py-1 text-[10px] font-black tracking-wider rounded-full transition-all duration-300 ${lang === 'mn' ? 'bg-white dark:bg-zinc-200 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-zinc-300'}`}>MN</div>
+                            </div>
+                            <button onClick={toggleSettings} className="text-slate-600 dark:text-zinc-300 hover:text-neonBlue dark:hover:text-neonBlue transition-colors text-xl p-2 rounded-full bg-slate-100 dark:bg-zinc-800/50 border border-slate-200/50 dark:border-white/5 shadow-sm active:scale-95">
+                                ⚙️
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* UI UX Upgrade: Modern Centered Settings Modal */}
+                    {isSettingsOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-md p-4 fade-in">
+                            <div className="bg-white/95 dark:bg-[#121214]/95 backdrop-blur-2xl border border-white/50 dark:border-white/10 rounded-[2rem] w-full max-w-sm shadow-[0_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col max-h-[90vh]">
+                                <div className="px-6 py-5 border-b border-slate-100 dark:border-zinc-800/50 flex justify-between items-center">
+                                    <h2 className="text-lg font-black text-slate-800 dark:text-white tracking-tight">{t.settings}</h2>
+                                    <button onClick={toggleSettings} className="text-slate-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 font-bold p-1 rounded-full bg-slate-100 dark:bg-zinc-800 transition-colors">✕</button>
+                                </div>
+                                
+                                <div className="p-6 overflow-y-auto no-scrollbar space-y-6 flex-1">
+                                    <div className="space-y-5">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm font-bold text-slate-700 dark:text-zinc-300">🌓 {t.theme}</span>
+                                            <div className="flex bg-slate-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-slate-200/50 dark:border-zinc-700/50">
+                                                <button onClick={() => setThemeMode('dark')} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${themeMode==='dark'?'bg-zinc-700 text-white shadow-sm':'text-slate-500'}`}>Dark</button>
+                                                <button onClick={() => setThemeMode('light')} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${themeMode==='light'?'bg-white text-slate-900 shadow-sm':'text-slate-500'}`}>Light</button>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm font-bold text-slate-700 dark:text-zinc-300">🔤 {t.font}</span>
+                                            <select value={fontStyle} onChange={(e)=>setFontStyle(e.target.value)} className="text-xs p-2 rounded-xl border border-slate-200/50 dark:border-zinc-700/50 bg-slate-50 dark:bg-zinc-800/80 font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-neonBlue/50">
+                                                <option value="Outfit">Modern (Outfit)</option>
+                                                <option value="Inter">Clean (Inter)</option>
+                                                <option value="Roboto">Classic (Roboto)</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm font-bold text-slate-700 dark:text-zinc-300">🔍 {t.uiSize}</span>
+                                            <div className="flex gap-1 bg-slate-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-slate-200/50 dark:border-zinc-700/50">
+                                                {['sm', 'md', 'lg'].map(size => (
+                                                    <button key={size} onClick={() => setUiScale(size)} className={`px-3 py-1.5 text-[11px] font-black tracking-wider rounded-lg transition-all ${uiScale===size?'bg-neonBlue text-white shadow-sm':'text-slate-400'}`}>{size.toUpperCase()}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="pt-4 pb-2 space-y-2 border-t border-slate-100 dark:border-zinc-800/50">
+                                        <ToggleRow label={`🔊 ${t.sound}`} checked={soundEnabled} onChange={setSoundEnabled} />
+                                        <ToggleRow label={`📳 ${t.haptic}`} checked={hapticEnabled} onChange={setHapticEnabled} />
+                                        <ToggleRow label={`✨ ${t.anim}`} checked={animEnabled} onChange={setAnimEnabled} />
+                                    </div>
+                                    
+                                    <div className="pt-4 flex gap-3 border-t border-slate-100 dark:border-zinc-800/50">
+                                        <button onClick={() => { if(window.confirm('Are you sure you want to reset all data?')) { localStorage.clear(); window.location.reload(); } }} className="flex-1 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 rounded-xl text-sm font-black hover:bg-red-100 dark:hover:bg-red-500/20 transition-all active:scale-95">
+                                            {t.resetBtn}
+                                        </button>
+                                        <button onClick={toggleSettings} className="flex-1 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-black hover:bg-slate-800 dark:hover:bg-zinc-200 transition-all active:scale-95 shadow-md">
+                                            {t.saveBtn}
+                                        </button>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-slate-100 dark:border-zinc-800/50 text-center">
+                                        <span className="text-xs font-black text-slate-800 dark:text-zinc-200 block mb-1.5 uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-neonBlue to-neonPurple">BBOTLOGIC</span>
+                                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed font-medium">{t.aboutDesc}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Main Content */}
+                    <main className="flex-1 overflow-y-auto no-scrollbar relative transition-colors scroll-smooth">
+                        <div className="max-w-3xl mx-auto p-4 md:p-6 pt-6 pb-32 md:pb-36">
+                            {activeTab === 'ev' && <EvToolsTab t={t} anim={animEnabled} lang={lang} />}
+                            {activeTab === 'home' && <HomeToolsTab t={t} anim={animEnabled} />}
+                        </div>
+                    </main>
+
+                    {/* UI UX Upgrade: Floating Glass Navigation Bar */}
+                    <nav className="fixed bottom-5 left-1/2 transform -translate-x-1/2 w-[92%] max-w-sm bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-2xl border border-white/60 dark:border-white/10 rounded-[2rem] shadow-[0_15px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.5)] z-40 p-1.5 pb-safe">
+                        <div className="flex justify-between items-center gap-1">
+                            <TabBtn id="ev" icon="⚡" label={t.evTab} active={activeTab==='ev'} onClick={()=>handleTabSwitch('ev')} color="text-neonBlue" activeBg="bg-neonBlue/10 dark:bg-neonBlue/20" />
+                            <TabBtn id="home" icon="🏠" label={t.homeTab} active={activeTab==='home'} onClick={()=>handleTabSwitch('home')} color="text-neonYellow" activeBg="bg-neonYellow/10 dark:bg-neonYellow/20" />
+                        </div>
+                    </nav>
+
+                </div>
+            );
+        }
+
+        /* --- Components --- */
+        function ToggleRow({ label, checked, onChange }) {
+            return (
+                <div className="flex justify-between items-center py-2.5">
+                    <span className="text-sm font-bold text-slate-700 dark:text-zinc-300">{label}</span>
+                    <button 
+                        type="button" 
+                        onClick={() => onChange(!checked)} 
+                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-300 ease-in-out focus:outline-none shadow-inner border border-black/5 dark:border-white/5 ${checked ? 'bg-neonBlue' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                    >
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-300 ease-in-out ${checked ? 'translate-x-[22px]' : 'translate-x-[4px]'}`} />
+                    </button>
+                </div>
+            );
+        }
+
+        function TabBtn({ id, icon, label, active, onClick, color, activeBg }) {
+            return (
+                <button onClick={onClick} className={`relative flex flex-col items-center justify-center w-1/2 py-2.5 rounded-[1.5rem] transition-all duration-300 ease-out overflow-hidden group ${active ? `${activeBg} shadow-sm` : 'hover:bg-slate-100 dark:hover:bg-zinc-800/50'}`}>
+                    <span className={`text-[22px] mb-1 transition-all duration-300 ${active ? 'transform -translate-y-0.5 scale-110' : 'scale-95 grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100'}`}>{icon}</span>
+                    <span className={`text-[10px] font-black tracking-widest uppercase transition-colors ${active ? color : 'text-slate-400 dark:text-zinc-500 group-hover:text-slate-600 dark:group-hover:text-zinc-300'}`}>{label}</span>
+                </button>
+            );
+        }
+
+        // UI UX Upgrade: Modern Cards with subtle gradient and inner glow
+        function Card({ title, color, children }) {
+            return (
+                <div className="p-5 md:p-6 bg-white/70 dark:bg-[#18181b]/70 backdrop-blur-xl rounded-[2rem] border border-white/60 dark:border-zinc-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.15)] relative overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)] group">
+                    {/* Top color indicator instead of side line */}
+                    <div className={`absolute top-0 left-0 w-full h-1 bg-${color} opacity-80`}></div>
+                    
+                    <div className="flex items-center gap-2.5 mb-5">
+                        <div className={`w-2 h-2 rounded-full bg-${color} shadow-[0_0_8px_currentColor] text-${color} animate-pulse`}></div>
+                        <h2 className={`text-[16px] md:text-[18px] font-black tracking-tight text-slate-800 dark:text-zinc-100`}>{title}</h2>
+                    </div>
+                    {children}
+                </div>
+            );
+        }
+
+        /* --- Tabs --- */
+        function EvToolsTab({ t, anim, lang }) {
+            return (
+                <div className={`space-y-5 md:space-y-6 ${anim ? 'slide-up' : ''}`}>
+                    <Card title={t.typeTitle} color="neonGreen"><BatteryTypeCalc lang={lang} /></Card>
+                    <Card title={t.battTitle} color="neonGreen"><BatteryCalc /></Card>
+                    <Card title={t.chargeTitle} color="neonBlue"><ChargerCalc /></Card>
+                    <Card title={t.motorTitle} color="neonOrange"><MotorCalc /></Card>
+                    <Card title={t.ctrlTitle} color="neonPurple"><ControllerCalc /></Card>
+                    <Card title={t.rangeTitle} color="neonRed"><RangeCalc /></Card>
+                </div>
+            );
+        }
+
+        function HomeToolsTab({ t, anim }) {
+            return (
+                <div className={`space-y-5 md:space-y-6 ${anim ? 'slide-up' : ''}`}>
+                    <Card title={t.loadTitle} color="neonPurple"><HouseLoadCalc t={t} /></Card>
+                    <Card title={t.wvaTitle} color="neonYellow"><BasicWVACalc /></Card>
+                    <Card title={t.pumpTitle} color="neonBlue"><PumpCalc /></Card>
+                    <Card title={t.billTitle} color="neonGreen"><BillCalc /></Card>
+                </div>
+            );
+        }
+
+        /* --- Calculators --- */
+        
+        // UI UX Upgrade: Sleeker inputs with focus states
+        function Input({ label, val, set, step="1" }) {
+            return (
+                <div className="flex flex-col group">
+                    <span className="text-[9px] md:text-[10px] text-slate-500 dark:text-zinc-400 font-bold mb-1.5 uppercase tracking-wider group-focus-within:text-neonBlue transition-colors">{label}</span>
+                    <input type="number" step={step} value={val} onChange={(e)=>set(e.target.value===''?'':Number(e.target.value))} className="w-full border border-slate-200/80 dark:border-zinc-700/50 bg-slate-50/80 dark:bg-zinc-900/50 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white text-[14px] md:text-[15px] font-bold shadow-sm focus:ring-2 focus:ring-neonBlue/40 focus:border-neonBlue outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-600" />
+                </div>
+            );
+        }
+        
+        // UI UX Upgrade: Beautiful Result Box with Gradients
+        function ResultBox({ label, val, unit="", color="text-slate-800 dark:text-white", isText=false, highlight=false, full=false }) {
+            const displayVal = (val === "NaN" || val === "Infinity" || val === undefined) ? "0" : val;
+            return (
+                <div className={`relative p-3.5 md:p-4 rounded-[1.25rem] flex flex-col items-center justify-center border transition-all duration-300 ${highlight?'border-slate-300/80 dark:border-zinc-600/80 bg-gradient-to-br from-slate-100 to-slate-50 dark:from-zinc-800 dark:to-zinc-900 shadow-md transform hover:scale-[1.02]':'border-slate-200/60 dark:border-zinc-800/80 bg-white/40 dark:bg-zinc-900/40'} ${full?'col-span-full':''}`}>
+                    <div className="text-[9px] md:text-[10px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-widest mb-1.5 text-center">{label}</div>
+                    <div className={`flex items-baseline gap-1 ${isText?'text-[15px] md:text-[17px]':'text-[18px] md:text-[22px]'} font-black ${color} ${highlight?'glow-text':''}`}>
+                        {displayVal} 
+                        {unit && <span className="text-[11px] md:text-[12px] text-slate-400 dark:text-zinc-500 font-bold tracking-wide">{unit}</span>}
+                    </div>
+                </div>
+            );
+        }
+
+        function HouseLoadCalc({ t }) {
+            const[rows, setRows] = useState([{ id: Date.now(), name: '', qty: 1, watts: 100 }]);
+
+            const addRow = () => {
+                setRows([...rows, { id: Date.now(), name: '', qty: 1, watts: 0 }]);
+            };
+
+            const updateRow = (id, field, value) => {
+                setRows(rows.map(r => r.id === id ? { ...r,[field]: value } : r));
+            };
+
+            const removeRow = (id) => {
+                if (rows.length > 1) setRows(rows.filter(r => r.id !== id));
+            };
+
+            const totalLoad = rows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.watts) || 0)), 0);
+
+            return (
+                <div className="space-y-4">
+                    <div className="space-y-3">
+                        {rows.map((row, index) => (
+                            <div key={row.id} className="group flex flex-col sm:flex-row gap-3 items-center bg-white/50 dark:bg-zinc-900/30 p-3.5 rounded-[1.25rem] border border-slate-200/60 dark:border-zinc-800/60 transition-all hover:shadow-sm">
+                                <div className="flex-1 w-full grid grid-cols-12 gap-2.5">
+                                    <div className="col-span-5 flex flex-col">
+                                        <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-1.5 uppercase tracking-wider">{t.itemName}</span>
+                                        <input type="text" value={row.name} onChange={(e) => updateRow(row.id, 'name', e.target.value)} placeholder="TV, Fan..." className="w-full border border-slate-200/80 dark:border-zinc-700/50 bg-slate-50/80 dark:bg-zinc-800/50 rounded-xl px-2.5 py-2 text-slate-800 dark:text-white text-[13px] font-bold shadow-sm focus:ring-2 focus:ring-neonPurple/40 outline-none transition-all placeholder:font-normal" />
+                                    </div>
+                                    <div className="col-span-3 flex flex-col">
+                                        <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-1.5 uppercase tracking-wider">{t.qty}</span>
+                                        <input type="number" min="1" value={row.qty} onChange={(e) => updateRow(row.id, 'qty', e.target.value)} className="w-full border border-slate-200/80 dark:border-zinc-700/50 bg-slate-50/80 dark:bg-zinc-800/50 rounded-xl px-2.5 py-2 text-slate-800 dark:text-white text-[13px] font-bold shadow-sm focus:ring-2 focus:ring-neonPurple/40 outline-none transition-all" />
+                                    </div>
+                                    <div className="col-span-4 flex flex-col">
+                                        <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold mb-1.5 uppercase tracking-wider">{t.watts}</span>
+                                        <input type="number" min="0" value={row.watts} onChange={(e) => updateRow(row.id, 'watts', e.target.value)} className="w-full border border-slate-200/80 dark:border-zinc-700/50 bg-slate-50/80 dark:bg-zinc-800/50 rounded-xl px-2.5 py-2 text-slate-800 dark:text-white text-[13px] font-bold shadow-sm focus:ring-2 focus:ring-neonPurple/40 outline-none transition-all" />
+                                    </div>
+                                </div>
+                                <button onClick={() => removeRow(row.id)} disabled={rows.length === 1} className={`p-2 rounded-xl text-white font-bold text-[12px] w-full sm:w-10 h-10 flex items-center justify-center mt-1 sm:mt-5 transition-all ${rows.length === 1 ? 'bg-slate-200 dark:bg-zinc-800 cursor-not-allowed text-slate-400 dark:text-zinc-600' : 'bg-red-500 hover:bg-red-600 shadow-md active:scale-95'}`}>✕</button>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <button onClick={addRow} className="w-full py-3.5 border-2 border-dashed border-neonPurple/40 dark:border-neonPurple/30 text-neonPurple rounded-[1.25rem] text-xs font-black tracking-widest uppercase bg-neonPurple/5 hover:bg-neonPurple/10 transition-all active:scale-[0.98]">
+                        {t.addRow}
+                    </button>
+
+                    <div className="pt-2">
+                        <ResultBox label={t.totalLoad} val={totalLoad.toLocaleString()} unit="W" color="text-neonPurple" highlight full />
+                    </div>
+                </div>
+            );
+        }
+
+        function BatteryTypeCalc({ lang }) {
+            const[type, setType] = useState('lead_acid'); const[v, setV] = useState(72); const[ah, setAh] = useState(32);
+            let maxV = 0, cutV = 0, safeAh = 0;
+            const volt = v || 0; const amp = ah || 0;
+            if (type === 'lead_acid' || type === 'gel') { maxV = (volt / 12) * 14.4; cutV = (volt / 12) * 10.5; safeAh = amp * 0.5; } 
+            else if (type === 'li_ion') { const cells = Math.round(volt / 3.7); maxV = cells * 4.2; cutV = cells * 2.8; safeAh = amp * 0.8; } 
+            else if (type === 'lifepo4') { const cells = Math.round(volt / 3.2); maxV = cells * 3.65; cutV = cells * 2.5; safeAh = amp * 0.95; }
+
+            const l = lang === 'en' ? { t: "Type", v: "Volt", a: "Cap (Ah)", m: "Max Charge", c: "Cut-off", s: "Safe Usable" } : { t: "အမျိုးအစား", v: "System Volt", a: "Capacity (Ah)", m: "Max Charge", c: "Cut-off", s: "Safe Usable" };
+            return (
+                <div className="space-y-4">
+                    <div className="flex flex-col group"><span className="text-[9px] md:text-[10px] text-slate-500 dark:text-zinc-400 font-bold mb-1.5 uppercase tracking-wider group-focus-within:text-neonGreen transition-colors">{l.t}</span>
+                        <select value={type} onChange={(e)=>setType(e.target.value)} className="w-full text-[14px] border border-slate-200/80 dark:border-zinc-700/50 rounded-xl px-3 py-2.5 text-slate-800 dark:text-white font-bold bg-slate-50/80 dark:bg-zinc-900/50 shadow-sm focus:ring-2 focus:ring-neonGreen/40 outline-none transition-all">
+                            <option value="lead_acid">Lead-Acid (ခဲအက်စစ်)</option><option value="gel">Gel Battery (ဂျယ်လ်)</option>
+                            <option value="li_ion">Lithium-Ion NMC (လီသီယမ်အိုင်းယွန်း)</option><option value="lifepo4">LiFePO4 (လီသီယမ်ဖော့စဖိတ်)</option>
+                        </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 md:gap-4"><Input label={l.v} val={v} set={setV} /><Input label={l.a} val={ah} set={setAh} /></div>
+                    <div className="grid grid-cols-3 gap-2.5 md:gap-3 mt-2">
+                        <ResultBox label={l.m} val={maxV?maxV.toFixed(1):0} unit="V" color="text-neonBlue" />
+                        <ResultBox label={l.c} val={cutV?cutV.toFixed(1):0} unit="V" color="text-neonRed" />
+                        <ResultBox label={l.s} val={safeAh?safeAh.toFixed(1):0} unit="Ah" color="text-neonGreen" highlight />
+                    </div>
+                </div>
+            );
+        }
+
+        function BatteryCalc() {
+            const[s, setS]=useState(20); const[p, setP]=useState(10); const[v, setV]=useState(3.6); const[ah, setAh]=useState(3.2);
+            return (<div className="space-y-4"><div className="grid grid-cols-2 gap-3 md:gap-4"><Input label="Series (S)" val={s} set={setS} /><Input label="Parallel (P)" val={p} set={setP} /><Input label="Cell V" val={v} set={setV} step="0.1" /><Input label="Cell Ah" val={ah} set={setAh} step="0.1" /></div><div className="grid grid-cols-3 gap-2.5 md:gap-3 mt-2"><ResultBox label="Total V" val={((s||0)*(v||0)).toFixed(1)} /><ResultBox label="Total Ah" val={((p||0)*(ah||0)).toFixed(1)} /><ResultBox label="Energy Wh" val={((s||0)*(v||0)*(p||0)*(ah||0)).toFixed(0)} color="text-neonGreen" highlight /></div></div>);
+        }
+        
+        function ChargerCalc() {
+            const[ah, setAh]=useState(32); const[a, setA]=useState(5); const[pct, setPct]=useState(20);
+            const time = a ? (((ah||0) * ((100-(pct||0))/100) / a)*1.15).toFixed(1) : 0;
+            return (<div className="space-y-4"><div className="grid grid-cols-3 gap-3 md:gap-4"><Input label="Batt Ah" val={ah} set={setAh} /><Input label="Charger A" val={a} set={setA} /><Input label="Current %" val={pct} set={setPct} /></div><ResultBox label="Time to 100% (Hours)" val={time} color="text-neonBlue" highlight full /></div>);
+        }
+        
+        function MotorCalc() {
+            const[v, setV]=useState(72); const[w, setW]=useState(2000); const[kv, setKv]=useState(12); const[inch, setInch]=useState(14); 
+            const rpm = (v||0)*(kv||0);
+            return (<div className="space-y-4"><div className="grid grid-cols-4 gap-2.5 md:gap-3"><Input label="Volts" val={v} set={setV} /><Input label="Watts" val={w} set={setW} /><Input label="KV" val={kv} set={setKv} /><Input label="Inch" val={inch} set={setInch} /></div><div className="grid grid-cols-3 gap-2.5 md:gap-3 mt-1"><ResultBox label="Amps" val={v?((w||0)/v).toFixed(1):0} /><ResultBox label="Max RPM" val={rpm.toFixed(0)} /><ResultBox label="Top km/h" val={((rpm * (inch||0) * 0.0254 * Math.PI * 60)/1000).toFixed(1)} color="text-neonOrange" highlight /></div></div>);
+        }
+        
+        function ControllerCalc() {
+            const[v, setV]=useState(72); const[a, setA]=useState(50); const getAWG=(amps)=>{ if(!amps) return "-"; if(amps<=20) return"12AWG"; if(amps<=30) return"10AWG"; if(amps<=50) return"8AWG"; if(amps<=80) return"6AWG"; return"4AWG+"; };
+            return (<div className="space-y-4"><div className="grid grid-cols-2 gap-3 md:gap-4"><Input label="Volts" val={v} set={setV} /><Input label="Max Amps" val={a} set={setA} /></div><div className="grid grid-cols-2 gap-2.5 md:gap-3 mt-1"><ResultBox label="Peak Power (W)" val={((v||0)*(a||0)).toFixed(0)} color="text-neonPurple" highlight /><ResultBox label="Wire Size" val={getAWG(a)} isText /></div></div>);
+        }
+        
+        function RangeCalc() {
+            const[v, setV]=useState(72); const[ah, setAh]=useState(32); const[eff, setEff]=useState(20);
+            const range = eff ? (((v||0)*(ah||0))/eff).toFixed(1) : 0;
+            return (<div className="space-y-4"><div className="grid grid-cols-3 gap-3 md:gap-4"><Input label="Volts" val={v} set={setV} /><Input label="Batt Ah" val={ah} set={setAh} /><Input label="Wh/km" val={eff} set={setEff} /></div><ResultBox label="Max Distance (km)" val={range} color="text-neonRed" highlight full /></div>);
+        }
+        
+        function BasicWVACalc() {
+            const[f, setF]=useState('W'); const[v, setV]=useState(220); const[a, setA]=useState(5); const[w, setW]=useState(1100); 
+            const r = f==='W'?{l:'Watt (W)', v:((v||0)*(a||0)).toFixed(1)} : f==='A'?{l:'Ampere (A)', v:((w||0)/(v||1)).toFixed(2)} : {l:'Voltage (V)', v:((w||0)/(a||1)).toFixed(1)};
+            return (<div className="space-y-4"><select value={f} onChange={(e)=>setF(e.target.value)} className="w-full text-[14px] border border-slate-200/80 dark:border-zinc-700/50 rounded-xl px-3 py-3 text-slate-800 dark:text-white bg-slate-50/80 dark:bg-zinc-900/50 font-bold outline-none focus:ring-2 focus:ring-neonYellow/40"><option value="W">Find Watt (W)</option><option value="V">Find Voltage (V)</option><option value="A">Find Ampere (A)</option></select><div className="grid grid-cols-2 gap-3 md:gap-4">{f!=='V' && <Input label="Volts (V)" val={v} set={setV} />}{f!=='A' && <Input label="Amps (A)" val={a} set={setA} />}{f!=='W' && <Input label="Watts (W)" val={w} set={setW} />}</div><ResultBox label={r.l} val={r.v} color="text-neonYellow" highlight full /></div>);
+        }
+        
+        function PumpCalc() {
+            const[w, setW]=useState(750); const[v, setV]=useState(220); const pf=0.8; const a = (w||0)/((v||1)*pf); const b =[6,10,16,20,25,32,40].find(x=>x>=a*1.25)||">40"; const wire = b>25?"6.0":b>16?"4.0":b>10?"2.5":"1.5";
+            return (<div className="space-y-4"><div className="grid grid-cols-2 gap-3 md:gap-4"><Input label="Motor Watts" val={w} set={setW} /><Input label="AC Volts" val={v} set={setV} /></div><div className="grid grid-cols-3 gap-2.5 md:gap-3 mt-1"><ResultBox label="Breaker Type" val="C / D" isText /><ResultBox label="Size (Amp)" val={v?`${b}A`:"-"} isText /><ResultBox label="Wire (mm²)" val={v?wire:"-"} color="text-neonBlue" isText highlight /></div></div>);
+        }
+        
+        function BillCalc() {
+            const[w, setW]=useState(1500); const[h, setH]=useState(8); const[c, setC]=useState(150); const cost = (((w||0)*(h||0))/1000)*(c||0);
+            return (<div className="space-y-4"><div className="grid grid-cols-3 gap-3 md:gap-4"><Input label="Total Watts" val={w} set={setW} /><Input label="Hours/Day" val={h} set={setH} /><Input label="1 Unit (MMK)" val={c} set={setC} /></div><div className="grid grid-cols-2 gap-2.5 md:gap-3 mt-1"><ResultBox label="Daily Cost" val={cost.toLocaleString()} /><ResultBox label="Monthly (30 Days)" val={(cost*30).toLocaleString()} color="text-neonGreen" highlight /></div></div>);
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
